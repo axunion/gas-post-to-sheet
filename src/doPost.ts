@@ -9,11 +9,12 @@ function doPost(
 	const response: PostResponse = { result: "done" };
 
 	try {
+		const date = new Date();
 		const parameter = JSON.parse(e.postData.contents);
 		const type = parameter.type;
-		const recaptcha = parameter.recaptcha;
+		const token = parameter.recaptchaToken;
 
-		if (!type || !recaptcha) {
+		if (!type || !token) {
 			throw new Error("Invalid parameter.");
 		}
 
@@ -26,24 +27,22 @@ function doPost(
 		}
 
 		const config = getConfig(configSheetId, type);
-		const date = new Date();
 
-		if (date > config.dueDate) {
-			throw new Error("This form has expired.");
-		}
-
-		const checkResult = validateParameters(parameter, config.rows);
+		const checkResult = validateParameters({
+			inputValues: parameter,
+			acceptedRows: config.rows,
+		});
 
 		if (checkResult.errors.length > 0) {
 			const error = checkResult.errors.join(", ");
 			throw new Error(`Invalid Parameter: ${error}`);
 		}
 
-		const recaptchaResult = verifyRecaptcha(secret, recaptcha);
+		const recaptchaResponse = verifyRecaptcha({ secret, token });
 
-		if (!recaptchaResult.success || recaptchaResult.score < 0.5) {
-			const score = recaptchaResult.score || "-";
-			const error = recaptchaResult["error-codes"].join(" ");
+		if (!recaptchaResponse.success || recaptchaResponse.score < 0.5) {
+			const score = recaptchaResponse.score || "-";
+			const error = recaptchaResponse["error-codes"].join(" ");
 			throw new Error(`reCAPTCHA verification failed. ${score} ${error}`);
 		}
 
