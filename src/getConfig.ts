@@ -1,13 +1,11 @@
 type Config = {
 	sheetId: string;
 	sheetName: string;
-	rows: ConfigRow[];
-};
-
-type ConfigRow = {
-	name: string;
-	maxlength: number;
-	required: boolean;
+	rows: {
+		name: string;
+		maxlength: number;
+		required: boolean;
+	}[];
 };
 
 function _getConfig(): void {

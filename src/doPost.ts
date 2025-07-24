@@ -1,12 +1,18 @@
-type PostResponse = {
-	result: "done" | "error";
-	error?: string;
+type PostSuccessResponse = {
+	result: "done";
 };
+
+type PostErrorResponse = {
+	result: "error";
+	error: string;
+};
+
+type PostResponse = PostSuccessResponse | PostErrorResponse;
 
 function doPost(
 	e: GoogleAppsScript.Events.DoPost,
 ): GoogleAppsScript.Content.TextOutput {
-	const response: PostResponse = { result: "done" };
+	let response: PostResponse = { result: "done" };
 
 	try {
 		const date = new Date();
@@ -55,8 +61,7 @@ function doPost(
 
 		sheet.appendRow([date, ...checkResult.values]);
 	} catch (error) {
-		response.result = "error";
-		response.error = error.message;
+		response = { result: "error", error: error.message };
 	}
 
 	return ContentService.createTextOutput(JSON.stringify(response));
