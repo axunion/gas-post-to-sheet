@@ -9,6 +9,12 @@ type PostErrorResponse = {
 
 type PostResponse = PostSuccessResponse | PostErrorResponse;
 
+function _doPost() {
+	const e = { parameter: { type: "" } };
+	const result = doPost(e as unknown as GoogleAppsScript.Events.DoPost);
+	console.log(result.getContent());
+}
+
 function doPost(
 	e: GoogleAppsScript.Events.DoPost,
 ): GoogleAppsScript.Content.TextOutput {
@@ -34,7 +40,7 @@ function doPost(
 
 		const config = getConfig(configSheetId, type);
 
-		const checkResult = validateParameters({
+		const checkResult = _validateParameters({
 			inputValues: parameter,
 			acceptedRows: config.rows,
 		});
@@ -44,7 +50,7 @@ function doPost(
 			throw new Error(`Invalid Parameter: ${error}`);
 		}
 
-		const recaptchaResponse = verifyRecaptcha({ secret, token });
+		const recaptchaResponse = _verifyRecaptcha({ secret, token });
 
 		if (!recaptchaResponse.success || recaptchaResponse.score < 0.5) {
 			const score = recaptchaResponse.score || "-";

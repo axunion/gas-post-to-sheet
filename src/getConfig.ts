@@ -29,7 +29,7 @@ function getConfig(sheetId: string, sheetName: string): Config {
 		sheetName: data[1][0].trim(),
 		rows: data.slice(3).map((row) => ({
 			name: row[0].trim(),
-			maxlength: Number.parseInt(row[1]) || 0,
+			maxlength: Number.parseInt(row[1], 10) || 0,
 			required: Boolean(row[2]),
 		})),
 	};

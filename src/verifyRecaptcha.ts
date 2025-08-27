@@ -17,7 +17,7 @@ type RecaptchaResponse = {
  * @throws {Error} If `params`, `params.secret`, or `params.recaptcha` is invalid.
  * @throws {Error} If the API fetch fails, the HTTP response code is not 200, or if the API response cannot be parsed.
  */
-function verifyRecaptcha(params: {
+function _verifyRecaptcha(params: {
 	secret: string;
 	token: string;
 }): RecaptchaResponse {

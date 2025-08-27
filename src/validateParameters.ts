@@ -21,7 +21,7 @@ type ValidateResult = {
  * @returns An object containing two arrays: `values` (valid, processed string values for fields that passed validation, ordered as per `acceptedRows`) and `errors` (any validation error messages).
  * @throws {Error} If `params`, `params.inputValues`, or `params.acceptedRows` is null or undefined.
  */
-function validateParameters(params: {
+function _validateParameters(params: {
 	inputValues: InputValues;
 	acceptedRows: AcceptedRow[];
 }): ValidateResult {
