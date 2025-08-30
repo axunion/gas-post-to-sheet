@@ -18,36 +18,56 @@ A Google Apps Script (GAS) webhook service that securely posts form data to Goog
 - Google Sheets for data storage and configuration
 - reCAPTCHA v3 site key and secret key
 
-### Installation
+### Installation (Local + clasp)
 
-1. **Create a new Google Apps Script project**
-   - Go to [Google Apps Script](https://script.google.com/)
-   - Click "New Project"
+1. Clone this repo locally.
+2. Install dependencies:
+  ```bash
+  npm install
+  ```
+3. Login to clasp (first time only):
+  ```bash
+  npx clasp login
+  ```
+4. Create a new GAS project (standalone) and note the scriptId OR create it directly via clasp:
+  ```bash
+  npx clasp create --type standalone --title "PostToSheet"
+  ```
+5. Build TypeScript to `dist/` (transpiles `.ts` and copies `appsscript.json`):
+  ```bash
+  npm run build
+  ```
+6. (Optional) Pull remote to ensure sync:
+  ```bash
+  npx clasp pull
+  ```
+7. Push compiled code (always push the build output, not `src`):
+  ```bash
+  npx clasp push -P dist
+  ```
 
-2. **Upload the source code**
-   - Copy all files from the `src/` directory to your GAS project
-   - Make sure to include the `appsscript.json` configuration
+### Script Properties
 
-3. **Set up Script Properties**
-   - Go to Project Settings → Script Properties
-   - Add the following properties:
-     - `RECAPTCHA_SECRET`: Your reCAPTCHA v3 secret key
-     - `SPREADSHEET_ID_CONFIG`: The ID of your configuration spreadsheet
+Set in Apps Script UI (Project Settings → Script properties):
+* `RECAPTCHA_SECRET` – reCAPTCHA v3 secret key
+* `SPREADSHEET_ID_CONFIG` – ID of the config spreadsheet
 
-4. **Configure your spreadsheet**
-   - Create a configuration sheet with the following structure:
-     ```
-     Row 1: Target spreadsheet ID
-     Row 2: Target sheet name
-     Row 3: (Header row - optional)
-     Row 4+: Field configurations (name, maxlength, required)
-     ```
+### Spreadsheet Config
 
-5. **Deploy as Web App**
-   - Click "Deploy" → "New Deployment"
-   - Choose "Web app" as the type
-   - Set execute permissions appropriately
-   - Copy the web app URL for use in your forms
+Create a sheet with:
+```
+Row 1: Target spreadsheet ID
+Row 2: Target sheet name
+Row 3: (Header row) Name | Maxlength | Required
+Row 4+: Field definitions
+```
+
+### Deploy as Web App (after push)
+
+1. In Apps Script: Deploy → New deployment → Type: Web app
+2. Set "Execute as": Me
+3. Set access (e.g. Anyone with the link if public form)
+4. Click Deploy and copy the URL
 
 ## Configuration
 
@@ -120,40 +140,38 @@ POST [YOUR_WEB_APP_URL]
 
 ### Requirements
 
-- Node.js (for development tools)
-- TypeScript
-- Biome (for formatting and linting)
+* Node.js (dev only)
+* TypeScript compiler
+* Biome (format / lint)
+* clasp (deploy)
 
-### Setup Development Environment
+### Dev Commands
 
 ```bash
-# Install dependencies
+# Install deps
 npm install
 
-# Format code
+# Build (outputs to dist/)
+npm run build
+
+# Format (check / write)
 npm run format
+npm run format:write
 
-# Lint code
+# Lint (check / fix)
 npm run lint
+npm run lint:write
 
-# Check code (format + lint)
+# Combined
 npm run check
+npm run check:write
 ```
-
-### Scripts
-
-- `npm run format` - Format code with Biome
-- `npm run format:write` - Format and write changes
-- `npm run lint` - Lint code with Biome
-- `npm run lint:write` - Lint and fix issues
-- `npm run check` - Run both format and lint checks
-- `npm run check:write` - Run checks and fix issues
 
 ## File Structure
 
 ```
 src/
-├── appsscript.json         # GAS configuration
+├── appsscript.json         # GAS manifest (copied to dist on build)
 ├── doPost.ts               # Main webhook handler
 ├── getConfig.ts            # Configuration retrieval
 ├── validateParameters.ts   # Parameter validation
