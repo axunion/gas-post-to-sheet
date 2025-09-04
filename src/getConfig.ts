@@ -1,7 +1,7 @@
 type Config = {
-	sheetId: string;
+	fileId: string;
 	sheetName: string;
-	rows: {
+	fieldConfigs: {
 		name: string;
 		maxlength: number;
 		required: boolean;
@@ -10,24 +10,50 @@ type Config = {
 
 function _getConfig(): void {
 	const properties = PropertiesService.getScriptProperties().getProperties();
-	const config = getConfig(properties.SPREADSHEET_ID_CONFIG, "");
+	const config = getConfig(properties.SPREADSHEET_ID_CONFIG, "", true);
 	console.log(config);
 }
 
-function getConfig(sheetId: string, sheetName: string): Config {
-	const ss = SpreadsheetApp.openById(sheetId);
-	const sheet = ss.getSheetByName(sheetName);
+function getConfig(
+	fileId: string,
+	type: string,
+	configOnly = false,
+): Config | unknown[] | undefined {
+	const ss = SpreadsheetApp.openById(fileId);
+	const configSheet = ss.getSheetByName("config");
 
-	if (!sheet) {
+	if (!configSheet) {
+		throw new Error("Config sheet not found.");
+	}
+
+	const configList = configSheet.getDataRange().getValues();
+
+	if (!configList) {
 		throw new Error("Config not found.");
 	}
 
-	const data = sheet.getDataRange().getValues();
+	const config = configList.find((row) => !row[0] && row[1] === type);
+
+	if (configOnly) {
+		return config;
+	}
+
+	if (!config) {
+		throw new Error("Config not found.");
+	}
+
+	const sheet = ss.getSheetByName(type);
+
+	if (!sheet) {
+		throw new Error("Sheet not found.");
+	}
+
+	const fieldConfigs = sheet.getDataRange().getValues();
 
 	return {
-		sheetId: data[0][0].trim(),
-		sheetName: data[1][0].trim(),
-		rows: data.slice(3).map((row) => ({
+		fileId: config[2].trim(),
+		sheetName: config[3].trim(),
+		fieldConfigs: fieldConfigs.slice(1).map((row) => ({
 			name: row[0].trim(),
 			maxlength: Number.parseInt(row[1], 10) || 0,
 			required: Boolean(row[2]),
