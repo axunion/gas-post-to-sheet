@@ -8,55 +8,89 @@ type Config = {
 	}[];
 };
 
+const CONFIG_SHEET_NAME = "config" as const;
+const COL_MARK = 0;
+const COL_TYPE = 1;
+const COL_FILE_ID = 2;
+const COL_SHEET_NAME = 3;
+
+const FIELD_COL_NAME = 0;
+const FIELD_COL_MAXLENGTH = 1;
+const FIELD_COL_REQUIRED = 2;
+
 function _getConfig(): void {
 	const properties = PropertiesService.getScriptProperties().getProperties();
-	const config = getConfig(properties.SPREADSHEET_ID_CONFIG, "", true);
+	const type = "";
+	const configRow = getConfigRow(properties.SPREADSHEET_ID_CONFIG, type);
+	const config = getConfig(properties.SPREADSHEET_ID_CONFIG, type);
+	console.log(configRow);
 	console.log(config);
 }
 
-function getConfig(
-	fileId: string,
+function _getConfigRow(
+	spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet,
 	type: string,
-	configOnly = false,
-): Config | unknown[] | undefined {
-	const ss = SpreadsheetApp.openById(fileId);
-	const configSheet = ss.getSheetByName("config");
+	fileId: string,
+): unknown[] {
+	const configSheet = spreadsheet.getSheetByName(CONFIG_SHEET_NAME);
 
 	if (!configSheet) {
-		throw new Error("Config sheet not found.");
+		throw new Error(
+			`Config sheet not found: sheet='${CONFIG_SHEET_NAME}', fileId='${fileId}'`,
+		);
 	}
 
-	const configList = configSheet.getDataRange().getValues();
+	const configRows = configSheet.getDataRange().getValues();
 
-	if (!configList) {
-		throw new Error("Config not found.");
+	if (!configRows || !configRows.length) {
+		throw new Error(
+			`Config sheet is empty: sheet='${CONFIG_SHEET_NAME}', fileId='${fileId}'`,
+		);
 	}
 
-	const config = configList.find((row) => !row[0] && row[1] === type);
+	const configRow = configRows.find(
+		(row) => !row[COL_MARK] && row[COL_TYPE] === type,
+	);
 
-	if (configOnly) {
-		return config;
+	if (!configRow) {
+		throw new Error(`Config not found: type='${type}', fileId='${fileId}'`);
 	}
 
-	if (!config) {
-		throw new Error("Config not found.");
+	return configRow;
+}
+
+function getConfigRow(fileId: string, type: string): unknown[] {
+	const ss = SpreadsheetApp.openById(fileId);
+	return _getConfigRow(ss, type, fileId);
+}
+
+function getConfig(fileId: string, type: string): Config {
+	const ss = SpreadsheetApp.openById(fileId);
+	const fieldSheet = ss.getSheetByName(type);
+
+	if (!fieldSheet) {
+		throw new Error(
+			`Field sheet not found: sheet='${type}', fileId='${fileId}'`,
+		);
 	}
 
-	const sheet = ss.getSheetByName(type);
-
-	if (!sheet) {
-		throw new Error("Sheet not found.");
-	}
-
-	const fieldConfigs = sheet.getDataRange().getValues();
+	const configRow = _getConfigRow(ss, type, fileId);
+	const fieldData = fieldSheet.getDataRange().getValues();
 
 	return {
-		fileId: config[2].trim(),
-		sheetName: config[3].trim(),
-		fieldConfigs: fieldConfigs.slice(1).map((row) => ({
-			name: row[0].trim(),
-			maxlength: Number.parseInt(row[1], 10) || 0,
-			required: Boolean(row[2]),
-		})),
+		fileId: String(configRow[COL_FILE_ID] ?? "").trim(),
+		sheetName: String(configRow[COL_SHEET_NAME] ?? "").trim(),
+		fieldConfigs: fieldData
+			.slice(1) // skip header row
+			.map((row) => ({
+				name: String(row[FIELD_COL_NAME] ?? "").trim(),
+				maxlength:
+					Number.parseInt(String(row[FIELD_COL_MAXLENGTH] ?? "").trim(), 10) ||
+					0,
+				required:
+					String(row[FIELD_COL_REQUIRED] ?? "")
+						.trim()
+						.toLowerCase() === "true",
+			})),
 	};
 }
