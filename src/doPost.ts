@@ -42,7 +42,7 @@ function doPost(
 
 		const checkResult = _validateParameters({
 			inputValues: parameter,
-			acceptedRows: config.rows,
+			acceptedRows: config.fieldConfigs,
 		});
 
 		if (checkResult.errors.length > 0) {
@@ -58,7 +58,7 @@ function doPost(
 			throw new Error(`reCAPTCHA verification failed. ${score} ${error}`);
 		}
 
-		const ss = SpreadsheetApp.openById(config.sheetId);
+		const ss = SpreadsheetApp.openById(config.fileId);
 		const sheet = ss.getSheetByName(config.sheetName);
 
 		if (!sheet) {

@@ -9,7 +9,6 @@ type Config = {
 };
 
 const CONFIG_SHEET_NAME = "config" as const;
-const COL_MARK = 0;
 const COL_TYPE = 1;
 const COL_FILE_ID = 2;
 const COL_SHEET_NAME = 3;
@@ -48,9 +47,7 @@ function _getConfigRow(
 		);
 	}
 
-	const configRow = configRows.find(
-		(row) => !row[COL_MARK] && row[COL_TYPE] === type,
-	);
+	const configRow = configRows.find((row) => row[COL_TYPE] === type);
 
 	if (!configRow) {
 		throw new Error(`Config not found: type='${type}', fileId='${fileId}'`);
