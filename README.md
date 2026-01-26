@@ -7,6 +7,7 @@ A Google Apps Script (GAS) webhook service that securely posts form data to Goog
 - 🔒 **reCAPTCHA v3 Integration**: Secure form submissions with bot protection
 - 📊 **Google Sheets Integration**: Automatically append form data to spreadsheets
 - ⚙️ **Configurable Validation**: Dynamic parameter validation based on spreadsheet configuration
+- ⏰ **Form Expiration**: Support for expired forms with status check endpoint
 - 🛡️ **Error Handling**: Comprehensive error handling and validation
 - 📝 **TypeScript Support**: Full TypeScript implementation for better code quality
 
@@ -23,27 +24,38 @@ A Google Apps Script (GAS) webhook service that securely posts form data to Goog
 1. Clone this repo locally.
 2. Install dependencies:
   ```bash
-  npm install
+  pnpm install
   ```
 3. Login to clasp (first time only):
   ```bash
-  npx clasp login
+  pnpm dlx @google/clasp login
   ```
-4. Create a new GAS project (standalone) and note the scriptId OR create it directly via clasp:
+4. Setup clasp configuration (choose one):
+
+  **Option A: Use existing GAS project**
   ```bash
-  npx clasp create --type standalone --title "PostToSheet"
+  cp .clasp.json.org .clasp.json
   ```
-5. Build TypeScript to `dist/` (transpiles `.ts` and copies `appsscript.json`):
-  ```bash
-  npm run build
+  Then edit `.clasp.json` and set your `scriptId`:
+  ```json
+  {
+    "scriptId": "your-script-id-here",
+    "rootDir": "dist"
+  }
   ```
-6. (Optional) Pull remote to ensure sync:
+
+  **Option B: Create new GAS project**
   ```bash
-  npx clasp pull
+  pnpm dlx @google/clasp create --type standalone --title "PostToSheet" --rootDir dist
   ```
-7. Push compiled code (always push the build output, not `src`):
+
+5. Build TypeScript:
   ```bash
-  npx clasp push -P dist
+  pnpm build
+  ```
+6. Push compiled code:
+  ```bash
+  pnpm dlx @google/clasp push
   ```
 
 ### Script Properties
@@ -54,81 +66,92 @@ Set in Apps Script UI (Project Settings → Script properties):
 
 ### Spreadsheet Config
 
-Create a sheet with:
-```
-Row 1: Target spreadsheet ID
-Row 2: Target sheet name
-Row 3: (Header row) Name | Maxlength | Required
-Row 4+: Field definitions
-```
+Create a configuration spreadsheet with two types of sheets:
 
-### Deploy as Web App (after push)
+**1. "list" sheet** (configuration index):
+
+| expired | type | fileId | sheetName |
+|---------|------|--------|-----------|
+| FALSE | contact | 1ABC...xyz | ContactForm |
+| TRUE | inquiry | 1ABC...xyz | InquiryForm |
+
+- `expired`: TRUE/FALSE - whether the form accepts submissions
+- `type`: Unique identifier for the form configuration
+- `fileId`: Target spreadsheet ID where form data will be stored
+- `sheetName`: Target sheet name within the spreadsheet
+
+**2. Type-specific sheets** (field definitions):
+
+Create a sheet named after each `type` value (e.g., "contact", "inquiry"):
+
+| Name | Maxlength | Required |
+|------|-----------|----------|
+| name | 50 | TRUE |
+| email | 100 | TRUE |
+| message | 1000 | FALSE |
+
+- `Name`: The name of the form field
+- `Maxlength`: Maximum character length (0 for no limit)
+- `Required`: TRUE/FALSE for required fields
+
+### Deploy as Web App
 
 1. In Apps Script: Deploy → New deployment → Type: Web app
 2. Set "Execute as": Me
 3. Set access (e.g. Anyone with the link if public form)
 4. Click Deploy and copy the URL
 
-## Configuration
-
-### Spreadsheet Configuration Format
-
-The configuration spreadsheet should follow this format:
-
-| Column A | Column B | Column C |
-|----------|----------|----------|
-| `target_spreadsheet_id` | | |
-| `target_sheet_name` | | |
-| Name | Maxlength | Required |
-| field_name_1 | max_length | required |
-| field_name_2 | max_length | required |
-| ... | ... | ... |
-
-Where:
-- `field_name`: The name of the form field
-- `max_length`: Maximum character length (0 for no limit)
-- `required`: TRUE/FALSE for required fields
-
-### Example Configuration
-
-```
-1ABcDefGhIjKlMnOpQrStUvWxYz123456789  // Target spreadsheet ID
-ContactForm                            // Target sheet name
-Name	Maxlength	Required
-name	50	TRUE
-email	100	TRUE
-message	1000	FALSE
-```
-
 ## API Usage
 
-### Endpoint
+### GET Endpoint (Check Status)
+
+```
+GET [YOUR_WEB_APP_URL]?type=your_config_type
+```
+
+**Parameters:**
+- `type`: The configuration type to check
+
+**Success Response:**
+```json
+{
+  "result": "done",
+  "expired": false
+}
+```
+
+**Error Response:**
+```json
+{
+  "result": "error",
+  "error": "Error description"
+}
+```
+
+### POST Endpoint (Submit Form)
 
 ```
 POST [YOUR_WEB_APP_URL]
 ```
 
-### Request Body
-
+**Request Body:**
 ```json
 {
-  "type": "your_config_sheet_name",
+  "type": "your_config_type",
   "recaptchaToken": "your_recaptcha_token",
   "field_name_1": "value1",
   "field_name_2": "value2"
 }
 ```
 
-### Response
-
-**Success:**
+**Success Response:**
 ```json
 {
   "result": "done"
 }
 ```
 
-**Error:**
+**Error Response:**
 ```json
 {
   "result": "error",
@@ -140,7 +163,8 @@ POST [YOUR_WEB_APP_URL]
 
 ### Requirements
 
-* Node.js (dev only)
+* Node.js
+* pnpm
 * TypeScript compiler
 * Biome (format / lint)
 * clasp (deploy)
@@ -149,22 +173,16 @@ POST [YOUR_WEB_APP_URL]
 
 ```bash
 # Install deps
-npm install
+pnpm install
 
 # Build (outputs to dist/)
-npm run build
+pnpm build
 
-# Format (check / write)
-npm run format
-npm run format:write
+# Check (format + lint)
+pnpm check
 
-# Lint (check / fix)
-npm run lint
-npm run lint:write
-
-# Combined
-npm run check
-npm run check:write
+# Check and auto-fix
+pnpm check:write
 ```
 
 ## File Structure
@@ -172,7 +190,8 @@ npm run check:write
 ```
 src/
 ├── appsscript.json         # GAS manifest (copied to dist on build)
-├── doPost.ts               # Main webhook handler
+├── doGet.ts                # GET request handler (status check)
+├── doPost.ts               # POST request handler (form submission)
 ├── getConfig.ts            # Configuration retrieval
 ├── validateParameters.ts   # Parameter validation
 └── verifyRecaptcha.ts      # reCAPTCHA verification
