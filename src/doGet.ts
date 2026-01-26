@@ -37,7 +37,7 @@ function doGet(
 			throw new Error("Invalid script properties.");
 		}
 
-		const config = getConfigRow(configSheetId, type);
+		const config = getConfigEntry(configSheetId, type);
 
 		response = {
 			result: "done",

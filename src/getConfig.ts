@@ -1,3 +1,5 @@
+type ConfigEntry = [boolean, string, string, string];
+
 type Config = {
 	fileId: string;
 	sheetName: string;
@@ -8,7 +10,7 @@ type Config = {
 	}[];
 };
 
-const CONFIG_SHEET_NAME = "config" as const;
+const LIST_SHEET_NAME = "list" as const;
 const COL_TYPE = 1;
 const COL_FILE_ID = 2;
 const COL_SHEET_NAME = 3;
@@ -20,47 +22,62 @@ const FIELD_COL_REQUIRED = 2;
 function _getConfig(): void {
 	const properties = PropertiesService.getScriptProperties().getProperties();
 	const type = "";
-	const configRow = getConfigRow(properties.SPREADSHEET_ID_CONFIG, type);
+	const configEntry = getConfigEntry(properties.SPREADSHEET_ID_CONFIG, type);
+	console.log(configEntry);
 	const config = getConfig(properties.SPREADSHEET_ID_CONFIG, type);
-	console.log(configRow);
 	console.log(config);
 }
 
-function _getConfigRow(
+/**
+ * Internal helper: Finds a configuration row within a spreadsheet.
+ *
+ * @throws {Error} If config sheet is not found or no matching configuration exists
+ */
+function findConfigEntry(
 	spreadsheet: GoogleAppsScript.Spreadsheet.Spreadsheet,
 	type: string,
 	fileId: string,
-): unknown[] {
-	const configSheet = spreadsheet.getSheetByName(CONFIG_SHEET_NAME);
+): ConfigEntry {
+	const configSheet = spreadsheet.getSheetByName(LIST_SHEET_NAME);
 
 	if (!configSheet) {
 		throw new Error(
-			`Config sheet not found: sheet='${CONFIG_SHEET_NAME}', fileId='${fileId}'`,
+			`Config sheet not found: sheet='${LIST_SHEET_NAME}', fileId='${fileId}'`,
 		);
 	}
 
-	const configRows = configSheet.getDataRange().getValues();
+	const configEntrys = configSheet.getDataRange().getValues();
 
-	if (!configRows || !configRows.length) {
+	if (!configEntrys || !configEntrys.length) {
 		throw new Error(
-			`Config sheet is empty: sheet='${CONFIG_SHEET_NAME}', fileId='${fileId}'`,
+			`Config sheet is empty: sheet='${LIST_SHEET_NAME}', fileId='${fileId}'`,
 		);
 	}
 
-	const configRow = configRows.find((row) => row[COL_TYPE] === type);
+	const configEntry = configEntrys.find((row) => row[COL_TYPE] === type);
 
-	if (!configRow) {
+	if (!configEntry) {
 		throw new Error(`Config not found: type='${type}', fileId='${fileId}'`);
 	}
 
-	return configRow;
+	return configEntry as ConfigEntry;
 }
 
-function getConfigRow(fileId: string, type: string): unknown[] {
+/**
+ * Retrieves a configuration row by file ID.
+ *
+ * @throws {Error} If spreadsheet cannot be opened or configuration not found
+ */
+function getConfigEntry(fileId: string, type: string): ConfigEntry {
 	const ss = SpreadsheetApp.openById(fileId);
-	return _getConfigRow(ss, type, fileId);
+	return findConfigEntry(ss, type, fileId);
 }
 
+/**
+ * Retrieves a complete configuration object with field validation rules.
+ *
+ * @throws {Error} If spreadsheet, config sheet, or field sheet cannot be accessed
+ */
 function getConfig(fileId: string, type: string): Config {
 	const ss = SpreadsheetApp.openById(fileId);
 	const fieldSheet = ss.getSheetByName(type);
@@ -71,12 +88,12 @@ function getConfig(fileId: string, type: string): Config {
 		);
 	}
 
-	const configRow = _getConfigRow(ss, type, fileId);
+	const configEntry = findConfigEntry(ss, type, fileId);
 	const fieldData = fieldSheet.getDataRange().getValues();
 
 	return {
-		fileId: String(configRow[COL_FILE_ID] ?? "").trim(),
-		sheetName: String(configRow[COL_SHEET_NAME] ?? "").trim(),
+		fileId: String(configEntry[COL_FILE_ID] ?? "").trim(),
+		sheetName: String(configEntry[COL_SHEET_NAME] ?? "").trim(),
 		fieldConfigs: fieldData
 			.slice(1) // skip header row
 			.map((row) => ({
