@@ -54,7 +54,7 @@ function doPost(
 
 		if (!recaptchaResponse.success || recaptchaResponse.score < 0.5) {
 			const score = recaptchaResponse.score || "-";
-			const error = recaptchaResponse["error-codes"].join(" ");
+			const error = recaptchaResponse["error-codes"]?.join(" ") ?? "";
 			throw new Error(`reCAPTCHA verification failed. ${score} ${error}`);
 		}
 
